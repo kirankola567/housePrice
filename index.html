@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartQuiz - AI Knowledge Test Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- ADDED: Realtime Database compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+      position: fixed;
+      width: 100%;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .nav-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: #666;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s;
+      cursor: pointer;
+    }
+
+    .nav-link:hover {
+      color: #667eea;
+    }
+
+    .main-container {
+      margin-top: 80px;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 80px);
+    }
+
+    .quiz-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      padding: 3rem;
+      width: 100%;
+      max-width: 600px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .quiz-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    .quiz-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .quiz-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 0.5rem;
+    }
+
+    .quiz-subtitle {
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .student-avatars {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      animation: bounce 2s infinite;
+    }
+
+    .avatar:nth-child(2) { animation-delay: 0.3s; }
+    .avatar:nth-child(3) { animation-delay: 0.6s; }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+
+    .subject-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .subject-card {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border: 2px solid #e9ecef;
+      border-radius: 15px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .subject-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+      border-color: #667eea;
+    }
+
+    .subject-card.selected {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border-color: transparent;
+    }
+
+    .subject-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .subject-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .subject-desc {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #667eea;
+      font-size: 1.1rem;
+    }
+
+    .loading i {
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .question-section {
+      margin-bottom: 2rem;
+    }
+
+    .question-number {
+      color: #667eea;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .question-text {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    .options-grid {
+      display: grid;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .option {
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      position: relative;
+    }
+
+    .option:hover {
+      background: #e3f2fd;
+      border-color: #667eea;
+      transform: translateY(-2px);
+    }
+
+    .option.selected {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .quiz-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2rem;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      margin-right: 2rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .results {
+      text-align: center;
+    }
+
+    .score-display {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #667eea;
+      margin: 1rem 0;
+    }
+
+    .score-message {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      color: #666;
+    }
+
+    .corrections {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      text-align: left;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .correction-item {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .correction-question {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+
+    .answer-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.3rem 0;
+      font-size: 0.9rem;
+    }
+
+    .correct { color: #28a745; }
+    .incorrect { color: #dc3545; }
+
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+
+    .leaderboard-table th,
+    .leaderboard-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .leaderboard-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+
+    .profile-info {
+      background: #f8f9fa;
+      padding: 2rem;
+      border-radius: 15px;
+      margin: 1rem 0;
+    }
+
+    .auth-form {
+      background: #f8f9fa;
+      padding: 2rem;
+      border-radius: 15px;
+      margin: 1rem 0;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .auth-switch {
+      text-align: center;
+      margin-top: 1rem;
+      color: #666;
+    }
+
+    .auth-switch a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .auth-switch a:hover {
+      text-decoration: underline;
+    }
+
+    .logout-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 15px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-left: 1rem;
+    }
+
+    .logout-btn:hover {
+      background: #c82333;
+    }
+
+    .bubble-nav {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 1000;
+    }
+
+    .bubble-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .bubble-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    .bubble-btn.home {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .bubble-btn.leaderboard {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+    }
+
+    .bubble-btn.profile {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+    }
+
+    .bubble-btn .tooltip {
+      position: absolute;
+      right: 70px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .bubble-btn:hover .tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .bubble-btn .tooltip::after {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-left-color: rgba(0,0,0,0.8);
+    }
+
+    @media (max-width: 768px) {
+      .bubble-nav {
+        bottom: 20px;
+        right: 20px;
+        flex-direction: row;
+        gap: 10px;
+      }
+      
+      .bubble-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+      }
+      
+      .bubble-btn .tooltip {
+        display: none;
+      }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: rgba(255,255,255,0.8);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 1rem; }
+      .nav-links { display: none; }
+      .quiz-card { margin: 1rem; padding: 2rem; }
+      .quiz-title { font-size: 1.5rem; }
+      .subject-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="nav-content">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        SmartQuiz AI
+      </div>
+      <div class="nav-links">
+        <span id="nav-authenticated" style="display: none;">
+          <span id="user-display"></span>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </span>
+        <span id="nav-guest">
+          <a class="nav-link" onclick="showLogin()">Login</a>
+          <a class="nav-link" onclick="showSignup()">Sign Up</a>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-container">
+    <div class="quiz-card">
+      <!-- Login Page -->
+      <div id="login-page">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Welcome Back!</h1>
+          <p class="quiz-subtitle">Sign in to continue your learning journey</p>
+        </div>
+        
+        <form class="auth-form" onsubmit="login(event)">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+          <button type="submit" class="btn" style="width: 100%;">Sign In</button>
+        </form>
+        
+        <div class="auth-switch">
+          Don't have an account? <a onclick="showSignup()">Sign up here</a>
+        </div>
+      </div>
+
+      <!-- Signup Page -->
+      <div id="signup-page" style="display: none;">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Join SmartQuiz!</h1>
+          <p class="quiz-subtitle">Create your account to start learning</p>
+        </div>
+        
+        <form class="auth-form" onsubmit="signup(event)">
+          <div class="form-group">
+            <label for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input type="email" id="signup-email" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label for="signup-confirm">Confirm Password</label>
+            <input type="password" id="signup-confirm" required>
+          </div>
+          <button type="submit" class="btn" style="width: 100%;">Create Account</button>
+        </form>
+        
+        <div class="auth-switch">
+          Already have an account? <a onclick="showLogin()">Sign in here</a>
+        </div>
+      </div>
+
+      <!-- Home Page -->
+      <div id="home-page">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Welcome to SmartQuiz AI</h1>
+          <p class="quiz-subtitle">Test your knowledge across multiple subjects</p>
+          
+          <div class="student-avatars">
+            <div class="avatar">👨🎓</div>
+            <div class="avatar">👩🎓</div>
+            <div class="avatar">🧑🎓</div>
+          </div>
+        </div>
+        
+        <div style="text-align: center;">
+          <button class="btn" onclick="showSubjects()">
+            <i class="fas fa-play"></i> Start Quiz
+          </button>
+        </div>
+      </div>
+
+      <!-- Subject Selection -->
+      <div id="subject-page" style="display: none;">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Choose Your Subject</h1>
+          <p class="quiz-subtitle">Select a topic to test your knowledge</p>
+        </div>
+
+        <div class="subject-grid">
+          <div class="subject-card" onclick="selectSubject('gk')">
+            <div class="subject-icon">🌍</div>
+            <div class="subject-name">General Knowledge</div>
+            <div class="subject-desc">World facts, history, geography</div>
+          </div>
+          
+          <div class="subject-card" onclick="selectSubject('java')">
+            <div class="subject-icon">☕</div>
+            <div class="subject-name">Java</div>
+            <div class="subject-desc">Programming concepts, syntax</div>
+          </div>
+          
+          <div class="subject-card" onclick="selectSubject('python')">
+            <div class="subject-icon">🐍</div>
+            <div class="subject-name">Python</div>
+            <div class="subject-desc">Python programming basics</div>
+          </div>
+          
+          <div class="subject-card" onclick="selectSubject('dsa')">
+            <div class="subject-icon">🔢</div>
+            <div class="subject-name">Data Structures</div>
+            <div class="subject-desc">Algorithms and data structures</div>
+          </div>
+          
+          <div class="subject-card" onclick="selectSubject('c')">
+            <div class="subject-icon">⚡</div>
+            <div class="subject-name">C Programming</div>
+            <div class="subject-desc">C language fundamentals</div>
+          </div>
+          
+          <div class="subject-card" onclick="selectSubject('cpp')">
+            <div class="subject-icon">🚀</div>
+            <div class="subject-name">C++</div>
+            <div class="subject-desc">Object-oriented programming</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="loading" style="display: none;">
+        <i class="fas fa-cog"></i>
+        Preparing your quiz...
+      </div>
+
+      <!-- Quiz Content -->
+      <div id="quiz-content" style="display: none;">
+        <div class="question-section">
+          <div id="question-number" class="question-number"></div>
+          <div id="question-text" class="question-text"></div>
+        </div>
+
+        <div id="options" class="options-grid"></div>
+
+        <div class="quiz-controls">
+          <div class="progress-bar">
+            <div id="progress" class="progress-fill" style="width: 0%"></div>
+          </div>
+          <button id="next-btn" class="btn">Next Question</button>
+          <button id="submit-btn" class="btn" style="display: none;">Submit Quiz</button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results" style="display: none;" class="results">
+        <div id="score-display" class="score-display"></div>
+        <div id="score-message" class="score-message"></div>
+        <div id="corrections" class="corrections"></div>
+        <button onclick="showHome()" class="btn">
+          <i class="fas fa-home"></i> Back to Home
+        </button>
+      </div>
+
+      <!-- Leaderboard -->
+      <div id="leaderboard-page" style="display: none;">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Leaderboard</h1>
+          <p class="quiz-subtitle">Top performers across all subjects</p>
+        </div>
+        
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Name</th>
+              <th>Subject</th>
+              <th>Score</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Profile -->
+      <div id="profile-page" style="display: none;">
+        <div class="quiz-header">
+          <h1 class="quiz-title">Your Profile</h1>
+          <p class="quiz-subtitle">Track your progress and achievements</p>
+          </div>
+        
+        <div class="profile-info">
+          <h3><i class="fas fa-user"></i> <span id="user-name">Guest User</span></h3>
+          <p><strong>Total Quizzes:</strong> <span id="total-quizzes">0</span></p>
+          <p><strong>Best Score:</strong> <span id="best-score">0/5</span></p>
+          <p><strong>Favorite Subject:</strong> <span id="fav-subject">None</span></p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+          <input type="text" id="name-input" placeholder="Enter your name" style="padding: 10px; border-radius: 5px; border: 1px solid #ddd; margin-right: 10px;">
+          <button class="btn" onclick="updateProfileName()">Update Name</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bubble Navigation -->
+  <div id="bubble-nav" class="bubble-nav" style="display: none;">
+    <button class="bubble-btn home" onclick="showHome()">
+      <i class="fas fa-home"></i>
+      <span class="tooltip">Home</span>
+    </button>
+    <button class="bubble-btn leaderboard" onclick="showLeaderboard()">
+      <i class="fas fa-trophy"></i>
+      <span class="tooltip">Leaderboard</span>
+    </button>
+    <button class="bubble-btn profile" onclick="showProfile()">
+      <i class="fas fa-user"></i>
+      <span class="tooltip">Profile</span>
+    </button>
+  </div>
+
+  <footer class="footer">
+    <p>© 2024 SmartQuiz AI - Powered by Advanced AI Technology</p>
+  </footer>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAg5jRLWp2tMjSTx7winp4xl8SCzeTAmlw",
+      authDomain: "smartquiz-assistant.firebaseapp.com",
+      projectId: "smartquiz-assistant",
+      storageBucket: "smartquiz-assistant.appspot.com", // FIXED: .appspot.com (was .firebasestorage.app)
+      messagingSenderId: "473573539903",
+      appId: "1:473573539903:web:3dca0da0cad801b99eb88a",
+      measurementId: "G-GLZHTNLF2C",
+      databaseURL: "https://smartquiz-assistant-default-rtdb.firebaseio.com" // ADDED: Realtime DB URL (replace with your RTDB URL if different)
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    
+    // Firebase services
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const rtdb = firebase.database(); // ADDED: Realtime Database reference
+    
+    console.log('Firebase initialized successfully');
+
+    const questionBank = {
+      gk: [
+        { q: "Who was the first President of India?", options: ["Dr. B.R. Ambedkar", "Dr. Rajendra Prasad", "Jawaharlal Nehru", "Sardar Patel"], answer: 1 },
+        { q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Mercury"], answer: 1 },
+        { q: "What is the capital of Australia?", options: ["Sydney", "Melbourne", "Canberra", "Perth"], answer: 2 },
+        { q: "Which is the largest ocean?", options: ["Atlantic", "Indian", "Pacific", "Arctic"], answer: 2 },
+        { q: "Who invented the telephone?", options: ["Alexander Graham Bell", "Thomas Edison", "Nikola Tesla", "James Watt"], answer: 0 },
+        { q: "Which is the smallest continent?", options: ["Asia", "Europe", "Australia", "Antarctica"], answer: 2 },
+        { q: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], answer: 2 },
+        { q: "Which is the tallest mountain?", options: ["K2", "Mount Everest", "Kangchenjunga", "Lhotse"], answer: 1 },
+        { q: "Who painted the Mona Lisa?", options: ["Van Gogh", "Picasso", "Leonardo da Vinci", "Michelangelo"], answer: 2 },
+        { q: "What is the speed of light?", options: ["300,000 km/s", "150,000 km/s", "450,000 km/s", "600,000 km/s"], answer: 0 }
+      ],
+      java: [
+        { q: "Which keyword is used to create a class in Java?", options: ["class", "Class", "new", "create"], answer: 0 },
+        { q: "What is the default value of int in Java?", options: ["null", "0", "1", "undefined"], answer: 1 },
+        { q: "Which method is the entry point of Java program?", options: ["start()", "main()", "run()", "init()"], answer: 1 },
+        { q: "What does JVM stand for?", options: ["Java Virtual Machine", "Java Variable Method", "Java Verified Module", "Java Version Manager"], answer: 0 },
+        { q: "Which access modifier allows access from anywhere?", options: ["private", "protected", "public", "default"], answer: 2 },
+        { q: "What is the size of int in Java?", options: ["16 bits", "32 bits", "64 bits", "8 bits"], answer: 1 },
+        { q: "Which keyword is used for inheritance?", options: ["extends", "implements", "inherits", "super"], answer: 0 },
+        { q: "What is autoboxing in Java?", options: ["Automatic memory management", "Converting primitive to wrapper", "Creating objects automatically", "Boxing primitives"], answer: 1 },
+        { q: "Which collection allows duplicate elements?", options: ["Set", "List", "Map", "Queue"], answer: 1 },
+        { q: "What is the parent class of all classes?", options: ["Class", "Object", "Super", "Parent"], answer: 1 }
+      ],
+      python: [
+        { q: "Which keyword is used to define a function?", options: ["function", "def", "func", "define"], answer: 1 },
+        { q: "What is the correct file extension for Python?", options: [".py", ".python", ".pt", ".pyt"], answer: 0 },
+        { q: "Which method is used to add an element to a list?", options: ["add()", "append()", "insert()", "push()"], answer: 1 },
+        { q: "What does 'len()' function return?", options: ["Length of object", "Last element", "First element", "Type of object"], answer: 0 },
+        { q: "Which operator is used for exponentiation?", options: ["^", "**", "exp", "pow"], answer: 1 },
+        { q: "What is the output of print(type([]))?", options: ["<class 'array'>", "<class 'list'>", "<class 'tuple'>", "<class 'dict'>"], answer: 1 },
+        { q: "Which keyword is used for exception handling?", options: ["catch", "except", "handle", "error"], answer: 1 },
+        { q: "What is a lambda function?", options: ["Anonymous function", "Named function", "Class method", "Built-in function"], answer: 0 },
+        { q: "Which method converts string to lowercase?", options: ["lower()", "toLower()", "lowercase()", "downcase()"], answer: 0 },
+        { q: "What is the correct way to create a dictionary?", options: ["[]", "{}", "()", "dict()"], answer: 1 }
+      ],
+      dsa: [
+        { q: "What is the time complexity of binary search?", options: ["O(n)", "O(log n)", "O(n²)", "O(1)"], answer: 1 },
+        { q: "Which data structure uses LIFO principle?", options: ["Queue", "Stack", "Array", "Tree"], answer: 1 },
+        { q: "What is the worst-case time complexity of quicksort?", options: ["O(n log n)", "O(n²)", "O(n)", "O(log n)"], answer: 1 },
+        { q: "Which traversal visits root node first?", options: ["Inorder", "Preorder", "Postorder", "Level order"], answer: 1 },
+        { q: "What is a complete binary tree?", options: ["All levels filled", "All levels filled except last", "Only left nodes", "Only right nodes"], answer: 1 },
+        { q: "Which algorithm is used to find shortest path?", options: ["DFS", "BFS", "Dijkstra", "Kruskal"], answer: 2 },
+        { q: "What is the space complexity of merge sort?", options: ["O(1)", "O(log n)", "O(n)", "O(n²)"], answer: 2 },
+        { q: "Which data structure is used in recursion?", options: ["Queue", "Stack", "Array", "Tree"], answer: 1 },
+        { q: "What is a hash collision?", options: ["Two keys same hash", "Hash function error", "Memory overflow", "Key not found"], answer: 0 },
+        { q: "Which sorting algorithm is stable?", options: ["Quick sort", "Heap sort", "Merge sort", "Selection sort"], answer: 2 }
+      ],
+      c: [
+        { q: "Which header file is needed for printf()?", options: ["<iostream>", "<stdio.h>", "<stdlib.h>", "<string.h>"], answer: 1 },
+        { q: "What is the size of char in C?", options: ["1 byte", "2 bytes", "4 bytes", "8 bytes"], answer: 0 },
+        { q: "Which operator is used to access structure members?", options: [".", "->", "::", "&"], answer: 0 },
+        { q: "What does malloc() return?", options: ["int pointer", "void pointer", "char pointer", "null"], answer: 1 },
+        { q: "Which loop executes at least once?", options: ["for", "while", "do-while", "none"], answer: 2 },
+        { q: "What is the correct way to declare a pointer?", options: ["int ptr", "int *ptr", "int &ptr", "ptr int"], answer: 1 },
+        { q: "Which function is used to copy strings?", options: ["strcpy()", "strcat()", "strlen()", "strcmp()"], answer: 0 },
+        { q: "What is the return type of main()?", options: ["void", "int", "char", "float"], answer: 1 },
+        { q: "Which keyword is used to create constants?", options: ["const", "constant", "final", "static"], answer: 0 },
+        { q: "What does '&' operator do?", options: ["Logical AND", "Bitwise AND", "Address of", "Reference"], answer: 2 }
+      ],
+      cpp: [
+        { q: "Which header is needed for cout?", options: ["<stdio.h>", "<iostream>", "<conio.h>", "<stdlib.h>"], answer: 1 },
+        { q: "What is function overloading?", options: ["Same name different parameters", "Different name same parameters", "Inheritance", "Polymorphism"], answer: 0 },
+        { q: "Which access specifier is default in class?", options: ["public", "private", "protected", "none"], answer: 1 },
+        { q: "What is a constructor?", options: ["Destructs objects", "Creates objects", "Initializes objects", "Copies objects"], answer: 2 },
+        { q: "Which operator is overloaded for stream insertion?", options: [">>", "<<", "->", "::"], answer: 1 },
+        { q: "What is virtual function?", options: ["Pure function", "Runtime polymorphism", "Compile time", "Static function"], answer: 1 },
+        { q: "Which keyword is used for inheritance?", options: ["extends", "inherits", ":", "->"], answer: 2 },
+        { q: "What is the scope resolution operator?", options: ["::", "->", ".", "&"], answer: 0 },
+        { q: "Which loop is entry controlled?", options: ["do-while", "while", "for", "both b&c"], answer: 3 },
+        { q: "What is STL?", options: ["Standard Template Library", "System Template Library", "Static Template Library", "Simple Template Library"], answer: 0 }
+      ]
+    };
+
+    let currentSubject = '';
+    let currentQuiz = [];
+    let currentIndex = 0;
+    let score = 0;
+    let userAnswers = [];
+    let currentUser = null;
+    let userData = {};
+    let allUsers = JSON.parse(localStorage.getItem('quizUsers')) || {};
+
+    window.initializeApp = function() {
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser && allUsers[savedUser]) {
+        currentUser = savedUser;
+        userData = allUsers[savedUser];
+        showAuthenticatedNav();
+        showHome();
+      } else {
+        showGuestNav();
+        showLogin();
+      }
+    }
+
+    // Firebase Auth State Listener (keeps app in sync with real auth)
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        loadUserData();
+        showAuthenticatedNav();
+        showHome();
+      } else {
+        currentUser = null;
+        userData = {};
+        showGuestNav();
+        showLogin();
+      }
+    });
+
+    async function loadUserData() {
+      try {
+        // Try Firestore first (existing logic)
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (doc.exists) {
+          userData = doc.data();
+        } else {
+          userData = {
+            name: currentUser.displayName || 'User',
+            email: currentUser.email,
+            totalQuizzes: 0,
+            bestScore: 0,
+            scores: []
+          };
+          // Set both Firestore and RTDB so both store types are populated
+          await db.collection('users').doc(currentUser.uid).set(userData);
+          await rtdb.ref('users/' + currentUser.uid).set(userData);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    }
+
+    window.showAuthenticatedNav = function() {
+      document.getElementById('nav-authenticated').style.display = 'block';
+      document.getElementById('nav-guest').style.display = 'none';
+      document.getElementById('bubble-nav').style.display = 'flex';
+      document.getElementById('user-display').textContent = `Hello, ${userData.name || 'User'}`;
+    }
+
+    window.showGuestNav = function() {
+      document.getElementById('nav-authenticated').style.display = 'none';
+      document.getElementById('nav-guest').style.display = 'block';
+      document.getElementById('bubble-nav').style.display = 'none';
+    }
+
+    window.showLogin = function() {
+      hideAllPages();
+      document.getElementById('login-page').style.display = 'block';
+    }
+
+    window.showSignup = function() {
+      hideAllPages();
+      document.getElementById('signup-page').style.display = 'block';
+    }
+
+    window.login = async function(event) {
+      event.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        alert('Login failed: ' + error.message);
+      }
+    }
+
+    window.signup = async function(event) {
+      event.preventDefault();
+      const name = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      
+      if (password !== confirm) {
+        alert('Passwords do not match!');
+        return;
+      }
+      
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await userCredential.user.updateProfile({ displayName: name });
+        
+        const userData = {
+          name: name,
+          email: email,
+          totalQuizzes: 0,
+          bestScore: 0,
+          scores: []
+        };
+        
+        // Save to Firestore (existing) AND Realtime DB (new)
+        await db.collection('users').doc(userCredential.user.uid).set(userData);
+        await rtdb.ref('users/' + userCredential.user.uid).set(userData);
+        alert('Account created successfully!');
+      } catch (error) {
+        alert('Signup failed: ' + error.message);
+      }
+    }
+
+    window.logout = async function() {
+      try {
+        await auth.signOut();
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+
+    window.showHome = function() {
+      hideAllPages();
+      document.getElementById('home-page').style.display = 'block';
+    }
+
+    window.showSubjects = function() {
+      hideAllPages();
+      document.getElementById('subject-page').style.display = 'block';
+    }
+
+    window.showLeaderboard = function() {
+      hideAllPages();
+      document.getElementById('leaderboard-page').style.display = 'block';
+      updateLeaderboard();
+    }
+
+    window.showProfile = function() {
+      hideAllPages();
+      document.getElementById('profile-page').style.display = 'block';
+      updateProfile();
+    }
+
+    function hideAllPages() {
+      const pages = ['login-page', 'signup-page', 'home-page', 'subject-page', 'loading', 'quiz-content', 'results', 'leaderboard-page', 'profile-page'];
+      pages.forEach(page => {
+        document.getElementById(page).style.display = 'none';
+      });
+    }
+
+    function selectSubject(subject) {
+      currentSubject = subject;
+      hideAllPages();
+      document.getElementById('loading').style.display = 'block';
+      
+      setTimeout(() => {
+        startQuiz();
+      }, 2000);
+    }
+
+    function startQuiz() {
+      const questions = questionBank[currentSubject];
+      currentQuiz = questions.sort(() => 0.5 - Math.random()).slice(0, 5);
+      currentIndex = 0;
+      score = 0;
+      userAnswers = [];
+      
+      hideAllPages();
+      document.getElementById('quiz-content').style.display = 'block';
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const question = currentQuiz[currentIndex];
+      document.getElementById('question-number').textContent = `Question ${currentIndex + 1} of ${currentQuiz.length}`;
+      document.getElementById('question-text').textContent = question.q;
+      
+      const optionsContainer = document.getElementById('options');
+      optionsContainer.innerHTML = '';
+      
+      question.options.forEach((option, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'option';
+        optionDiv.textContent = option;
+        optionDiv.onclick = () => selectOption(optionDiv, index);
+        optionsContainer.appendChild(optionDiv);
+      });
+      
+      updateProgress();
+      updateButtons();
+    }
+
+    function selectOption(element, index) {
+      document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+      element.classList.add('selected');
+      element.dataset.selected = index;
+    }
+
+    function updateProgress() {
+      const progress = ((currentIndex + 1) / currentQuiz.length) * 100;
+      document.getElementById('progress').style.width = progress + '%';
+    }
+
+    function updateButtons() {
+      const nextBtn = document.getElementById('next-btn');
+      const submitBtn = document.getElementById('submit-btn');
+      
+      if (currentIndex === currentQuiz.length - 1) {
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'block';
+      } else {
+        nextBtn.style.display = 'block';
+        submitBtn.style.display = 'none';
+      }
+    }
+
+    function nextQuestion() {
+      const selected = document.querySelector('.option.selected');
+      if (!selected) {
+        alert('Please select an answer!');
+        return;
+      }
+      
+      const answer = parseInt(selected.dataset.selected);
+      userAnswers.push(answer);
+      
+      if (answer === currentQuiz[currentIndex].answer) {
+        score++;
+      }
+      
+      currentIndex++;
+      if (currentIndex < currentQuiz.length) {
+        showQuestion();
+      }
+    }
+
+    function submitQuiz() {
+      const selected = document.querySelector('.option.selected');
+      if (selected) {
+        const answer = parseInt(selected.dataset.selected);
+        userAnswers.push(answer);
+        if (answer === currentQuiz[currentIndex].answer) {
+          score++;
+        }
+      }
+      
+      saveScore();
+      showResults();
+    }
+
+    async function saveScore() {
+      // Update local userData object
+      userData.totalQuizzes = (userData.totalQuizzes || 0) + 1;
+      if (score > (userData.bestScore || 0)) {
+        userData.bestScore = score;
+      }
+      
+      const scoreData = {
+        subject: currentSubject,
+        score: score,
+        total: currentQuiz.length,
+        date: new Date().toLocaleDateString(),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      // push to local array
+      userData.scores = userData.scores || [];
+      userData.scores.push(scoreData);
+      
+      try {
+        // Update Firestore (existing)
+        if (currentUser && currentUser.uid) {
+          await db.collection('users').doc(currentUser.uid).update({
+            totalQuizzes: userData.totalQuizzes,
+            bestScore: userData.bestScore,
+            scores: firebase.firestore.FieldValue.arrayUnion(scoreData)
+          });
+        }
+      } catch (error) {
+        console.error('Error saving to Firestore (non-blocking):', error);
+      }
+      
+      try {
+        // NEW: Write to Realtime Database under quizResults/{uid}/
+        if (currentUser && currentUser.uid) {
+          const resultPath = 'quizResults/' + currentUser.uid;
+          const rtdbRef = rtdb.ref(resultPath);
+          // Use a push() so each attempt is stored separately
+          await rtdbRef.push({
+            userId: currentUser.uid,
+            userName: userData.name || currentUser.displayName || '',
+            userEmail: currentUser.email || '',
+            subject: currentSubject,
+            score: score,
+            total: currentQuiz.length,
+            date: new Date().toISOString()
+          });
+          // Also update a summary under users/{uid}
+          const usersRef = rtdb.ref('users/' + currentUser.uid);
+          await usersRef.update({
+            email: currentUser.email || '',
+            name: userData.name || currentUser.displayName || '',
+            totalQuizzes: userData.totalQuizzes,
+            bestScore: userData.bestScore
+          });
+        } else {
+          console.warn('No currentUser.uid — skipping Realtime DB write');
+        }
+      } catch (rtdbErr) {
+        console.error('Error saving to Realtime DB:', rtdbErr);
+      }
+    }
+
+    function showResults() {
+      hideAllPages();
+      document.getElementById('results').style.display = 'block';
+      
+      const percentage = Math.round((score / currentQuiz.length) * 100);
+      document.getElementById('score-display').textContent = `${score}/${currentQuiz.length}`;
+      
+      let message = '';
+      if (percentage >= 80) message = '🏆 Excellent! You\'re a knowledge champion!';
+      else if (percentage >= 60) message = '🌟 Great job! Keep up the good work!';
+      else if (percentage >= 40) message = '👍 Good effort! Room for improvement!';
+      else message = '💪 Keep learning! Practice makes perfect!';
+      
+      document.getElementById('score-message').textContent = message;
+      showCorrections();
+    }
+
+    function showCorrections() {
+      const correctionsDiv = document.getElementById('corrections');
+      let html = '<h3 style="margin-bottom: 1rem; color: #667eea;"><i class="fas fa-clipboard-check"></i> Answer Review</h3>';
+      
+      currentQuiz.forEach((question, index) => {
+        const userAnswer = userAnswers[index];
+        const isCorrect = userAnswer === question.answer;
+        
+        html += `
+          <div class="correction-item">
+            <div class="correction-question">Q${index + 1}: ${question.q}</div>
+            <div class="answer-row">
+              <span>Your Answer:</span>
+              <span class="${isCorrect ? 'correct' : 'incorrect'}">
+                ${question.options[userAnswer] || 'Not answered'}
+              </span>
+            </div>
+            <div class="answer-row">
+              <span>Correct Answer:</span>
+              <span class="correct">${question.options[question.answer]}</span>
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.8rem;">
+              ${isCorrect ? '<i class="fas fa-check-circle correct"></i> Correct' : '<i class="fas fa-times-circle incorrect"></i> Incorrect'}
+            </div>
+          </div>
+        `;
+      });
+      
+      correctionsDiv.innerHTML = html;
+    }
+
+    async function updateLeaderboard() {
+      const tbody = document.getElementById('leaderboard-body');
+      
+      try {
+        // Read top entries from RTDB 'quizResults' across all users is non-trivial in RTDB
+        // We'll read /quizResults and flatten — for production consider a Cloud Function to maintain leaderboard
+        const snapshot = await rtdb.ref('quizResults').once('value');
+        const all = snapshot.val() || {};
+        const flattened = [];
+        Object.keys(all).forEach(uid => {
+          const userEntries = all[uid];
+          Object.keys(userEntries || {}).forEach(k => {
+            flattened.push(userEntries[k]);
+          });
+        });
+        // sort by score desc, then date desc
+        flattened.sort((a,b) => (b.score - a.score) || (new Date(b.date) - new Date(a.date)));
+        const top = flattened.slice(0, 10);
+        
+        tbody.innerHTML = top.map((score, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${score.userName || score.userEmail || 'Anonymous'}</td>
+            <td>${(score.subject || '').toUpperCase()}</td>
+            <td>${score.score}/${score.total}</td>
+            <td>${new Date(score.date).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading leaderboard:', error);
+        tbody.innerHTML = '<tr><td colspan="5">Error loading leaderboard</td></tr>';
+      }
+    }
+
+    window.updateProfile = function() {
+      document.getElementById('user-name').textContent = userData.name;
+      document.getElementById('total-quizzes').textContent = userData.totalQuizzes;
+      document.getElementById('best-score').textContent = `${userData.bestScore}/5`;
+      
+      const subjects = (userData.scores || []).map(s => s.subject);
+      const favSubject = subjects.length > 0 ? 
+        subjects.sort((a,b) => subjects.filter(v => v===a).length - subjects.filter(v => v===b).length).pop() : 'None';
+      document.getElementById('fav-subject').textContent = (favSubject || 'None').toUpperCase();
+    }
+
+    window.updateProfileName = async function() {
+      const nameInput = document.getElementById('name-input');
+      if (nameInput.value.trim()) {
+        userData.name = nameInput.value.trim();
+        
+        try {
+          await db.collection('users').doc(currentUser.uid).update({ name: userData.name });
+          await rtdb.ref('users/' + currentUser.uid).update({ name: userData.name });
+          await currentUser.updateProfile({ displayName: userData.name });
+          showAuthenticatedNav();
+          updateProfile();
+          nameInput.value = '';
+          alert('Name updated successfully!');
+        } catch (error) {
+          console.error('Error updating name:', error);
+          alert('Failed to update name');
+        }
+      }
+    }
+
+    document.getElementById('next-btn').onclick = nextQuestion;
+    document.getElementById('submit-btn').onclick = submitQuiz;
+    
+    // Initialize app
+    initializeApp();
+    
+    // Test Firebase connection
+    console.log('Firebase app:', firebase.app());
+    console.log('Firebase project ID:', firebase.app().options.projectId);
+  </script>
+</body>
+</html>
